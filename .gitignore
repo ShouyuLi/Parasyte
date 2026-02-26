@@ -1,0 +1,9 @@
+.cache/
+
+# local build outputs
+/migi
+/service-a
+bin/
+
+# OS/editor noise
+.DS_Store
