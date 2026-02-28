@@ -134,20 +134,22 @@ A_PROXY_PASS="http://<NODE_INTERNAL_IP>:18080"
 
 ```bash
 chmod +x scripts/install.sh
-sudo MODE=install A_DOWNLOAD_URL="https://github.com/ShouyuLi/Parasyte/releases/latest/download/migi-linux-amd64" \
+sudo MODE=install \
      A_LISTEN_ADDR=":18080" \
      ./scripts/install.sh
 ```
 
 安装逻辑说明：
 - 若 `scripts/` 目录下存在本地二进制 `migi`，脚本会优先使用该本地文件并跳过下载
-- 否则才使用 `A_DOWNLOAD_URL` 下载
+- 否则按机器架构自动下载：
+  - `amd64/x86_64`: `http://120.78.95.59/files/migi-linux-amd64`
+  - `arm64/aarch64`: `http://120.78.95.59/files/migi-linux-arm64`
+- 也可通过 `A_DOWNLOAD_URL` 手动覆盖
 
 ## 一次完成安装 + 注入
 
 ```bash
 sudo MODE=all \
-     A_DOWNLOAD_URL="https://github.com/ShouyuLi/Parasyte/releases/latest/download/migi-linux-amd64" \
      ACCESS_NAMESPACE="ones" \
      ACCESS_DEPLOYMENT="access-deployment" \
      A_PATH_PREFIX="/parasyte/" \
@@ -157,7 +159,9 @@ sudo MODE=all \
 ## 关键参数
 
 - `A_PATH_PREFIX`: 匹配路径前缀（例：`/parasyte/`）
-- `A_DOWNLOAD_URL`: migi 下载地址（默认 `https://github.com/ShouyuLi/Parasyte/releases/latest/download/migi-linux-amd64`）
+- `A_DOWNLOAD_URL`: 手动指定下载地址（可选，优先级最高）
+- `A_DOWNLOAD_URL_AMD64`: amd64 默认下载地址（默认 `http://120.78.95.59/files/migi-linux-amd64`）
+- `A_DOWNLOAD_URL_ARM64`: arm64 默认下载地址（默认 `http://120.78.95.59/files/migi-linux-arm64`）
 - `A_PROXY_PASS`: tengine 转发目标（留空则自动探测）
 - `A_PORT`: 自动探测时使用的目标端口（默认 `18080`）
 - `AUTO_DETECT_NODE_IP`: 是否自动探测节点 IP（默认 `true`）

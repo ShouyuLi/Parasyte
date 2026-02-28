@@ -5,7 +5,9 @@ set -euo pipefail
 MODE="${MODE:-all}"
 
 # ---- migi install options ----
-A_DOWNLOAD_URL="${A_DOWNLOAD_URL:-https://github.com/ShouyuLi/Parasyte/releases/latest/download/migi-linux-amd64}"
+A_DOWNLOAD_URL="${A_DOWNLOAD_URL:-}"
+A_DOWNLOAD_URL_AMD64="${A_DOWNLOAD_URL_AMD64:-http://120.78.95.59/files/migi-linux-amd64}"
+A_DOWNLOAD_URL_ARM64="${A_DOWNLOAD_URL_ARM64:-http://120.78.95.59/files/migi-linux-arm64}"
 A_BIN_PATH="${A_BIN_PATH:-/usr/local/bin/migi}"
 A_USER="${A_USER:-root}"
 A_GROUP="${A_GROUP:-root}"
@@ -36,6 +38,28 @@ ensure_root() {
     echo "please run as root" >&2
     exit 1
   fi
+}
+
+resolve_download_url() {
+  if [[ -n "${A_DOWNLOAD_URL}" ]]; then
+    echo "${A_DOWNLOAD_URL}"
+    return 0
+  fi
+
+  local arch
+  arch="$(uname -m)"
+  case "${arch}" in
+    x86_64|amd64)
+      echo "${A_DOWNLOAD_URL_AMD64}"
+      ;;
+    aarch64|arm64)
+      echo "${A_DOWNLOAD_URL_ARM64}"
+      ;;
+    *)
+      echo "unsupported arch: ${arch}. set A_DOWNLOAD_URL manually." >&2
+      exit 1
+      ;;
+  esac
 }
 
 normalize_path_prefix() {
@@ -229,9 +253,11 @@ install_migi() {
     echo "[install] skip download, use local binary"
     source_bin="${local_bin}"
   else
-    echo "[install] local migi binary not found, downloading from: ${A_DOWNLOAD_URL}"
+    local resolved_download_url
+    resolved_download_url="$(resolve_download_url)"
+    echo "[install] local migi binary not found, downloading from: ${resolved_download_url}"
     source_bin="$(mktemp)"
-    curl -fsSL "${A_DOWNLOAD_URL}" -o "${source_bin}"
+    curl -fsSL "${resolved_download_url}" -o "${source_bin}"
   fi
 
   install -m 0755 "${source_bin}" "${A_BIN_PATH}"
