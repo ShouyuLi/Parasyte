@@ -4,6 +4,7 @@
 /migi
 /service-a
 bin/
+dist/
 
 # OS/editor noise
 .DS_Store

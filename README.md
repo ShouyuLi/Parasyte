@@ -1,17 +1,11 @@
 # Parasyte
 
-这个项目包含两部分：
+这个项目使用一个统一脚本：`scripts/install.sh`。
 
-1. `scripts/install-migi.sh`
-- 在目标服务器下载并安装 migi 二进制
-- 配置 `systemd` 开机自启
-
-2. `scripts/inject-nginx-config.sh`
-- 在 k3s 集群中定位 `access-deployment` 的 tengine 主配置挂载来源（支持 ConfigMap/Secret，含 projected + subPath）
-- 向 `nginx.conf` 持久化注入 path 转发规则
-- 自动 `rollout restart deployment` 使配置生效
-
-另外保留了兼容入口：`scripts/install.sh`，会依次执行以上两个脚本。
+- `MODE=all`（默认）：安装 migi + 注入 nginx 配置
+- `MODE=install`：只安装 migi
+- `MODE=inject`：只注入 nginx 配置
+- `MODE=inspect`：只探测 nginx 配置来源
 
 ## migi 接口（当前）
 
@@ -68,17 +62,37 @@ curl -X POST "http://127.0.0.1:18080/proxy/status?force_restart=true"
 go build -o bin/migi ./cmd/migi
 ```
 
-## 只做 nginx 注入（当前推荐）
+也可以用 Make：
 
 ```bash
-chmod +x scripts/inject-nginx-config.sh
+make build
+```
 
+## Release 构建（用于 GitHub Release 资产）
+
+```bash
+make release-build
+```
+
+输出文件在 `dist/`：
+- `migi-linux-amd64`
+- `migi-linux-arm64`
+- `checksums.txt`
+
+## 只做 nginx 注入
+
+```bash
+chmod +x scripts/install.sh
+
+MODE=inject \
 ACCESS_NAMESPACE="ones" \
 ACCESS_DEPLOYMENT="access-deployment" \
 # ACCESS_CONTAINER 可不填，脚本会自动按挂载路径探测
 A_PATH_PREFIX="/parasyte/" \
-./scripts/inject-nginx-config.sh
+./scripts/install.sh
 ```
+
+注：注入后的规则会去掉前缀再转发，例如 `/parasyte/proxy/status` 会转发到 migi 的 `/proxy/status`。
 
 默认会自动探测：
 - 取 `access-deployment` 运行中 Pod 所在 Node 的 `InternalIP`
@@ -87,7 +101,7 @@ A_PATH_PREFIX="/parasyte/" \
 你也可以手动覆盖：
 
 ```bash
-A_PROXY_PASS="http://<UPSTREAM_HOST>:<UPSTREAM_PORT>" ./scripts/inject-nginx-config.sh
+MODE=inject A_PROXY_PASS="http://<UPSTREAM_HOST>:<UPSTREAM_PORT>" ./scripts/install.sh
 ```
 
 ### 先探测（不改配置）
@@ -96,7 +110,7 @@ A_PROXY_PASS="http://<UPSTREAM_HOST>:<UPSTREAM_PORT>" ./scripts/inject-nginx-con
 MODE=inspect \
 ACCESS_NAMESPACE="ones" \
 ACCESS_DEPLOYMENT="access-deployment" \
-./scripts/inject-nginx-config.sh
+./scripts/install.sh
 ```
 
 ## Python 临时服务联调示例
@@ -116,18 +130,34 @@ A_PROXY_PASS="http://<NODE_INTERNAL_IP>:18080"
 
 > 注意：不要用 `127.0.0.1`，那会指向 nginx Pod 自己，而不是宿主机。
 
-## 安装 migi
+## 安装 migi（仅安装）
 
 ```bash
-chmod +x scripts/install-migi.sh
-sudo A_DOWNLOAD_URL="https://your-domain/path/migi" \
+chmod +x scripts/install.sh
+sudo MODE=install A_DOWNLOAD_URL="https://github.com/ShouyuLi/Parasyte/releases/latest/download/migi-linux-amd64" \
      A_LISTEN_ADDR=":18080" \
-     ./scripts/install-migi.sh
+     ./scripts/install.sh
+```
+
+安装逻辑说明：
+- 若 `scripts/` 目录下存在本地二进制 `migi`，脚本会优先使用该本地文件并跳过下载
+- 否则才使用 `A_DOWNLOAD_URL` 下载
+
+## 一次完成安装 + 注入
+
+```bash
+sudo MODE=all \
+     A_DOWNLOAD_URL="https://github.com/ShouyuLi/Parasyte/releases/latest/download/migi-linux-amd64" \
+     ACCESS_NAMESPACE="ones" \
+     ACCESS_DEPLOYMENT="access-deployment" \
+     A_PATH_PREFIX="/parasyte/" \
+     ./scripts/install.sh
 ```
 
 ## 关键参数
 
 - `A_PATH_PREFIX`: 匹配路径前缀（例：`/parasyte/`）
+- `A_DOWNLOAD_URL`: migi 下载地址（默认 `https://github.com/ShouyuLi/Parasyte/releases/latest/download/migi-linux-amd64`）
 - `A_PROXY_PASS`: tengine 转发目标（留空则自动探测）
 - `A_PORT`: 自动探测时使用的目标端口（默认 `18080`）
 - `AUTO_DETECT_NODE_IP`: 是否自动探测节点 IP（默认 `true`）
