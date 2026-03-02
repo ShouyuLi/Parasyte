@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  parasyte-local-setup.sh --host <pXXXX-k3s-4.k3s-dev.myones.net> [options]
+  parasyte-local-setup.sh --host <pXXXX-k3s-YY.k3s-dev.myones.net> [options]
 
 Options:
   --host <host>               Required. Target host for /parasyte endpoints.
@@ -92,9 +92,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n "${HOST}" ]] || fail "请提供 --host。示例: --host p2113-k3s-4.k3s-dev.myones.net"
-[[ "${HOST}" =~ ^p[0-9]+-k3s-4\.k3s-dev\.myones\.net$ ]] || \
-  fail "--host 格式不符合预期，应为 pXXXX-k3s-4.k3s-dev.myones.net"
+[[ -n "${HOST}" ]] || fail "请提供 --host。示例: --host p2113-k3s-5.k3s-dev.myones.net"
+[[ "${HOST}" =~ ^p[0-9]+-k3s-[0-9]+\.k3s-dev\.myones\.net$ ]] || \
+  fail "--host 格式不符合预期，应为 pXXXX-k3s-YY.k3s-dev.myones.net"
 
 PARASYTE_BASE="https://${HOST}/parasyte"
 CURL_FLAGS=(-fsS)
@@ -161,16 +161,48 @@ if [[ "${SKIP_TELEPRESENCE}" != "true" ]]; then
     fi
   fi
 
-  log "步骤 7: 安装 telepresence traffic-manager"
-  telepresence helm install \
-    --set image.registry=localhost:5000/ones/telepresenceio,image.tag=2.22.4,agent.image.registry=localhost:5000/ones/telepresenceio,agent.image.tag=2.22.4 \
+  log "步骤 7: 检查并安装 telepresence traffic-manager"
+  helm_args=(
+    --set image.registry=localhost:5000/ones/telepresenceio,image.tag=2.22.4,agent.image.registry=localhost:5000/ones/telepresenceio,agent.image.tag=2.22.4
     --set 'client.dns.includeSuffixes={.advanced-tidb-pd,.advanced-tidb-tikv,kafka-ha}'
+  )
+  if kubectl get pods -A | grep -q traffic-manager; then
+    log "检测到已有 traffic-manager，跳过安装"
+  else
+    log "未检测到 traffic-manager，执行 telepresence helm install"
+    install_err_file="$(mktemp)"
+    if ! telepresence helm install "${helm_args[@]}" 2>"${install_err_file}"; then
+      cat "${install_err_file}" >&2 || true
+      if grep -q "already installed" "${install_err_file}"; then
+        log "install 提示已安装（release 已存在），执行一次 telepresence helm upgrade 兜底"
+        telepresence helm upgrade "${helm_args[@]}" || \
+          fail "telepresence helm upgrade 失败，请手动检查 telepresence/helm 状态"
+      else
+        fail "telepresence helm install 失败，请查看输出日志"
+      fi
+    fi
+    rm -f "${install_err_file}" || true
+  fi
   kubectl get pods -A | grep traffic-manager >/dev/null || \
     fail "未检测到 traffic-manager Pod"
   log "traffic-manager 安装验证通过"
 
   log "步骤 8: 建立 telepresence 连接并验证服务"
-  telepresence connect --namespace "${NAMESPACE}"
+  log "先执行 telepresence quit，避免跨环境切换导致 connect 长时间等待"
+  telepresence quit >/dev/null 2>&1 || true
+  connect_err_file="$(mktemp)"
+  if ! telepresence connect --namespace "${NAMESPACE}" 2>"${connect_err_file}"; then
+    cat "${connect_err_file}" >&2 || true
+    if grep -q "Cluster configuration changed" "${connect_err_file}"; then
+      log "检测到集群配置已变化，自动执行 telepresence quit 后重连"
+      telepresence quit >/dev/null 2>&1 || true
+      telepresence connect --namespace "${NAMESPACE}" || \
+        fail "telepresence 重连失败，请执行 telepresence quit 后手动重试"
+    else
+      fail "telepresence connect 失败，请查看日志: ~/Library/Logs/telepresence/connector.log"
+    fi
+  fi
+  rm -f "${connect_err_file}" || true
   telepresence status >/dev/null
   curl "${CURL_FLAGS[@]}" "http://project-api-service/version" >/dev/null
   log "telepresence 联通验证通过"

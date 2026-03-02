@@ -1,7 +1,7 @@
 interface:
   display_name: "Parasyte 中文指南"
   short_description: "中文指导 Parasyte 控制链路与 Telepresence 联调"
-  default_prompt: "使用 $parasyte-tool-guide，按“控制 https://pXXXX-k3s-4.k3s-dev.myones.net”的标准 0-8 步完成 migi、kubeconfig 与 Telepresence 联调。"
+  default_prompt: "使用 $parasyte-tool-guide，按“控制 https://pXXXX-k3s-YY.k3s-dev.myones.net”的标准 0-8 步完成 migi、kubeconfig 与 Telepresence 联调。"
 
 policy:
   allow_implicit_invocation: true
