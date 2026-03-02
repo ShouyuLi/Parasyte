@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  parasyte-local-setup.sh --host <pXXXX-k3s-YY.k3s-dev.myones.net> [options]
+  parasyte-local-setup.sh --host <xxxx-k3s-YY.k3s-dev.myones.net> [options]
 
 Options:
   --host <host>               Required. Target host for /parasyte endpoints.
@@ -92,9 +92,9 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-[[ -n "${HOST}" ]] || fail "请提供 --host。示例: --host p2113-k3s-5.k3s-dev.myones.net"
-[[ "${HOST}" =~ ^p[0-9]+-k3s-[0-9]+\.k3s-dev\.myones\.net$ ]] || \
-  fail "--host 格式不符合预期，应为 pXXXX-k3s-YY.k3s-dev.myones.net"
+[[ -n "${HOST}" ]] || fail "请提供 --host。示例: --host x2113-k3s-5.k3s-dev.myones.net"
+[[ "${HOST}" =~ ^[^.]+-k3s-[0-9]+\.k3s-dev\.myones\.net$ ]] || \
+  fail "--host 格式不符合预期，应为 xxxx-k3s-YY.k3s-dev.myones.net（前缀可变，-k3s- 固定）"
 
 PARASYTE_BASE="https://${HOST}/parasyte"
 CURL_FLAGS=(-fsS)

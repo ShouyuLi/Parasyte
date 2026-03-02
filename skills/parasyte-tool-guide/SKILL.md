@@ -1,6 +1,6 @@
 ---
 name: parasyte-tool-guide
-description: 指导用户安装、配置、验证并排障 Parasyte 工具链（`migi`、远程 `curl` 获取并执行 `install.sh`、`scripts/inject-nginx-config.sh`、`/parasyte/*` 接口）。当用户表达“控制 https://pXXXX-k3s-YY.k3s-dev.myones.net”（其中 `pXXXX` 与 `YY` 可变，域名后缀固定）或提到 Parasyte、migi、`/proxy/status`、`/init`、`/kubeconfig`、远程 k3s 接入、Telepresence 联调时触发本技能。
+description: 指导用户安装、配置、验证并排障 Parasyte 工具链（`migi`、远程 `curl` 获取并执行 `install.sh`、`scripts/inject-nginx-config.sh`、`/parasyte/*` 接口）。当用户表达“控制 https://xxxx-k3s-YY.k3s-dev.myones.net”（其中前缀 `xxxx` 可变、`YY` 可变、`-k3s-` 固定，域名后缀固定）或提到 Parasyte、migi、`/proxy/status`、`/init`、`/kubeconfig`、远程 k3s 接入、Telepresence 联调时触发本技能。
 ---
 
 # Parasyte 使用指南
@@ -14,7 +14,7 @@ description: 指导用户安装、配置、验证并排障 Parasyte 工具链（
 
 当用户出现以下表达时直接使用本技能：
 
-1. “控制 `https://p2113-k3s-5.k3s-dev.myones.net`”这类请求（`p2113` 与 `k3s-5` 都可变）。
+1. “控制 `https://x2113-k3s-5.k3s-dev.myones.net`”这类请求（前缀与 `k3s-5` 都可变，`-k3s-` 固定）。
 2. “帮我连远程 k3s / 拉起 parasyte / 检查 migi 状态”。
 3. “执行 `/parasyte/proxy/status`、`/parasyte/init`、`/parasyte/kubeconfig`”。
 4. “安装 telepresence 并打通 project-api-service”。
@@ -24,24 +24,22 @@ description: 指导用户安装、配置、验证并排障 Parasyte 工具链（
 以下流程默认从用户输入目标域名开始。设：
 
 ```bash
-TARGET_HOST="p2113-k3s-5.k3s-dev.myones.net"   # 用户口述的控制域名
+TARGET_HOST="x2113-k3s-5.k3s-dev.myones.net"   # 用户口述的控制域名
 PARASYTE_BASE="https://${TARGET_HOST}/parasyte"
 ```
 
-如果用户给的是其他 `pXXXX-k3s-YY`，替换对应编号即可。
+如果用户给的是其他 `xxxx-k3s-YY`，替换前缀和编号即可（`-k3s-` 不变）。
 
 ### 0. 识别触发
 
-用户说“控制 `https://pXXXX-k3s-YY.k3s-dev.myones.net`”即进入本流程。
+用户说“控制 `https://xxxx-k3s-YY.k3s-dev.myones.net`”即进入本流程。
 
 ### 1. 远程服务器安装并启动 migi
 
 指导用户在目标服务器直接下载并执行安装脚本：
 
 ```bash
-curl -fsSL http://120.78.95.59/files/install.sh -o /tmp/install.sh
-chmod +x /tmp/install.sh
-sudo /tmp/install.sh
+curl -fsSL http://120.78.95.59/files/install.sh | sudo bash
 ```
 
 说明：
@@ -157,7 +155,7 @@ curl http://project-api-service/version
 
 ```bash
 chmod +x ~/.codex/skills/parasyte-tool-guide/scripts/parasyte-local-setup.sh
-~/.codex/skills/parasyte-tool-guide/scripts/parasyte-local-setup.sh --host p2113-k3s-5.k3s-dev.myones.net
+~/.codex/skills/parasyte-tool-guide/scripts/parasyte-local-setup.sh --host x2113-k3s-5.k3s-dev.myones.net
 ```
 
 常用参数：
@@ -169,7 +167,7 @@ chmod +x ~/.codex/skills/parasyte-tool-guide/scripts/parasyte-local-setup.sh
 
 ## 关键说明
 
-1. 优先基于用户提供的 `pXXXX-k3s-YY.k3s-dev.myones.net` 生成所有 URL。
+1. 优先基于用户提供的 `xxxx-k3s-YY.k3s-dev.myones.net` 生成所有 URL（前缀可变，`-k3s-` 固定）。
 2. 若用户提供了不一致主机（例如 `-3` 与 `-4` 混用），先指出并默认使用用户最初声明的控制域名。
 3. `init` 可能耗时较长，明确提示用户等待命令完成再继续下一步。
 4. 涉及覆盖 `~/.kube/config` 时，必须提醒备份。
